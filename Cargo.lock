@@ -531,9 +531,9 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "xtuc-sieve-rs"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f8a7bfca0b265c91faf501ad3162ce82551890dd0ed9ea792662e721ead044e"
+checksum = "f8d1f6fadf12d88274ab40a031b8561b7c27c4ffc7a552032e82a72a7f868d7a"
 dependencies = [
  "ahash",
  "bincode",

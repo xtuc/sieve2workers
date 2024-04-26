@@ -61,6 +61,8 @@ impl<'a> CodeGen<'a> {
             .write("export async function run({ message, sendMessage }) {");
         self.buffer.newline();
 
+        self.buffer.write("const extraHeaders = new Headers;");
+
         self.buffer
             .write("const raw = await streamToArrayBuffer(message.raw, message.rawSize);");
         self.buffer.newline();
@@ -91,7 +93,7 @@ impl<'a> CodeGen<'a> {
         // TODO: sieve has a default keep rule but how to do it
         // in email workers? We don't know where to forward by default.
         // self.buffer.newline();
-        // self.buffer.write("await message.forward('default here');");
+        // self.buffer.write("await message.forward('default here',extraHeaders);");
 
         self.buffer.newline();
         self.buffer.write("}");
@@ -123,6 +125,7 @@ fn generate_instr(ctx: &mut CodeGen, instr: &Instruction) -> Result<(), BoxError
         }
         Instruction::Reject(n) => generate_reject(ctx, &n)?,
         Instruction::Redirect(n) => generate_redirect(ctx, &n)?,
+        Instruction::AddHeader(n) => generate_add_header(ctx, &n)?,
         Instruction::Discard => {
             if ctx.opts.debug {
                 ctx.buffer.write("console.log(\"discard\");");
@@ -280,9 +283,32 @@ fn generate_redirect(
         ctx.buffer.write("console.log(\"forward\");");
     }
 
-    ctx.buffer.write("message.forward(");
+    ctx.buffer.write("await message.forward(");
     generate_value(ctx, &node.address)?;
-    ctx.buffer.write(");");
+    ctx.buffer.write(",extraHeaders);");
+    Ok(())
+}
+
+fn generate_add_header(
+    ctx: &mut CodeGen,
+    node: &sieve_grammar::actions::action_editheader::AddHeader,
+) -> Result<(), BoxError> {
+    match &node.field_name {
+        sieve::compiler::Value::Text(s) => {
+            if !s.to_lowercase().starts_with("x-") {
+                return Err(format!("header {} not allowed", s).into());
+            }
+
+            ctx.buffer.write("extraHeaders.append(");
+            generate_value(ctx, &node.field_name)?;
+            ctx.buffer.write(",");
+            generate_value(ctx, &node.value)?;
+            ctx.buffer.write(");");
+        }
+
+        e => unimplemented!("add header field: {e:?}"),
+    }
+
     Ok(())
 }
 
@@ -370,7 +396,10 @@ mod tests {
         };
 
         generate_redirect(&mut ctx, &input).unwrap();
-        assert_eq!(ctx.buffer.to_string(), "message.forward(\"foo reason\");");
+        assert_eq!(
+            ctx.buffer.to_string(),
+            "await message.forward(\"foo reason\",extraHeaders);"
+        );
     }
 
     #[test]
@@ -463,5 +492,34 @@ mod tests {
             ctx.buffer.to_string(),
             "if (parsedMessage.subject.includes(\"match\")) {\nreturn;return;\n}\n"
         );
+    }
+
+    #[test]
+    fn test_generate_add_header() {
+        let mut ctx = CodeGen::new(GenerateOpts::default(), &[]);
+
+        {
+            let node = sieve_grammar::actions::action_editheader::AddHeader {
+                field_name: sieve::compiler::Value::Text(Arc::new("invalid_header".to_owned())),
+                value: sieve::compiler::Value::Text(Arc::new("b".to_owned())),
+                last: false,
+            };
+
+            generate_add_header(&mut ctx, &node).unwrap_err();
+        }
+
+        {
+            let node = sieve_grammar::actions::action_editheader::AddHeader {
+                field_name: sieve::compiler::Value::Text(Arc::new("x-a".to_owned())),
+                value: sieve::compiler::Value::Text(Arc::new("b".to_owned())),
+                last: false,
+            };
+
+            generate_add_header(&mut ctx, &node).unwrap();
+            assert_eq!(
+                ctx.buffer.to_string(),
+                "extraHeaders.append(\"x-a\",\"b\");"
+            );
+        }
     }
 }
