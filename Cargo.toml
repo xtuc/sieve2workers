@@ -1,0 +1,12 @@
+[package]
+name = "sieve2workers"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sven Sauleau <sven@sauleau.com>"]
+publish = true
+description = "Convert a Sieve program into a Cloudflare Workers for Cloudflare Email Routing."
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+sieve = { package = "xtuc-sieve-rs", version = "0.4.0" }
