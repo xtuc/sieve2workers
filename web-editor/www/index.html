@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Hello wasm-pack!</title>
+  </head>
+  <body>
+    <style>
+      body {
+        background: #e16a3f;
+      }
+
+      #root {
+        display: flex;
+      }
+
+      .code-editor:before,
+      .code-editor:after,
+      .code-editor span.control:before,
+      .code-editor span.after:after {
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -o-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        content: "";
+        position: absolute;
+        z-index: 1;
+        -webkit-transition: all 0.5s ease-in-out;
+        -moz-transition: wall 0.5s ease-in-out;
+        -o-transition: all 0.5s ease-in-out;
+        transition: all 0.5s ease-in-out;
+      }
+
+      .code-editor {
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -o-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        margin: 20px auto 0 auto;
+        width: 50%;
+        padding: 0px 20px;
+        text-align: left;
+        border-radius: 0 0 5px 5px;
+        overflow: auto;
+        -webkit-transition: all 0.5s ease-in-out;
+        -moz-transition: wall 0.5s ease-in-out;
+        -o-transition: all 0.5s ease-in-out;
+        transition: all 0.5s ease-in-out;
+      }
+
+      .code-editor-header {
+        color: #222;
+        padding-top: 6px;
+        top: 25px;
+        height: 30px;
+        background-color: #fafafa;
+        border-radius: 5px 5px 0 0;
+        -moz-border-radius: 5px 5px 0 0;
+        -o-border-radius: 5px 5px 0 0;
+        -webkit-border-radius: 5px 5px 0 0;
+      }
+
+      .code-editor-header span.text {
+        margin-left: 85px;
+        margin-top: 4px;
+      }
+
+      .code-editor-header span.control:before {
+        content: "";
+        z-index: 2;
+        padding: 6px;
+        border-radius: 20px;
+        -moz-border-radius: 20px;
+        -o-border-radius: 20px;
+        -webkit-border-radius: 20px;
+        margin-top: 4px;
+      }
+
+      .code-editor-header span.control:nth-child(1):before {
+        margin-left: 15px;
+        background-color: #df6963;
+      }
+
+      .code-editor-header span.control:nth-child(2):before {
+        margin-left: 35px;
+        background-color: #f5e18a;
+      }
+
+      .code-editor-header span.control:nth-child(3):before {
+        margin-left: 55px;
+        background-color: #97c38a;
+      }
+
+      /* -- iPad Screen -- */
+      @media only screen and (min-width: 480px) and (max-width: 768px) {
+        .code-editor {
+          width: 500px;
+        }
+
+        .code-editor:before {
+          width: 500px;
+        }
+      }
+
+      /* -- iPhone Screen -- */
+      @media only screen and (max-width: 479px) {
+        .code-editor {
+          width: 300px;
+        }
+
+        .code-editor:before {
+          width: 300px;
+        }
+      }
+
+      .error {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        text-align: center;
+        padding-top: 30vh;
+        height: 60vh;
+      }
+    </style>
+
+    <script src="./bootstrap.js"></script>
+    <div id="root"></div>
+  </body>
+</html>
