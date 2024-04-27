@@ -1,6 +1,6 @@
 [package]
 name = "sieve2workers"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Sven Sauleau <sven@sauleau.com>"]
 publish = true
@@ -9,4 +9,5 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-sieve = { package = "xtuc-sieve-rs", version = "0.4.1" }
+sieve = { package = "xtuc-sieve-rs", version = "0.4.2" }
+# sieve = { package = "xtuc-sieve-rs", path = "../sieve" }

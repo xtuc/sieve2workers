@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "sieve2workers"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "clap",
  "xtuc-sieve-rs",
@@ -531,9 +531,9 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "xtuc-sieve-rs"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8d1f6fadf12d88274ab40a031b8561b7c27c4ffc7a552032e82a72a7f868d7a"
+checksum = "fd57dd68d2d54e2866b9bb7d0738f93980a8f3eb17e54273fc74e29212789c1b"
 dependencies = [
  "ahash",
  "bincode",

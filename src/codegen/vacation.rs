@@ -17,11 +17,17 @@ pub(crate) fn generate_vacation(
         "Vacation auto-reply"
     };
 
+    let from = ctx
+        .opts
+        .vacation_from_address
+        .as_ref()
+        .ok_or("Missing --vacation-from-address")?;
+
     ctx.buffer.write(&format!(
         r#"
         const msg = createMimeMessage();
         msg.setHeader("In-Reply-To", message.headers.get("Message-ID"));
-        msg.setSender({{ name: "Vacation auto-reply", addr: "sven@sauleau.com" }});
+        msg.setSender({{ name: "Vacation auto-reply", addr: "{from}" }});
         msg.setRecipient(message.from);
         msg.setSubject("{subject}");
         msg.addMessage({{
@@ -30,7 +36,7 @@ pub(crate) fn generate_vacation(
         }});
 
         const replyMessage = new EmailMessage(
-          "sven@sauleau.com",
+          "{from}",
           message.from,
           msg.asRaw()
         );

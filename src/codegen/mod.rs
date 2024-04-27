@@ -5,15 +5,20 @@ use sieve::compiler::grammar::instruction::Instruction;
 mod body;
 mod buffer;
 mod editheader;
+mod fileinto;
 mod reject;
+mod relational;
+mod spamtest;
+mod test;
 mod vacation;
 
 #[derive(Default, Clone)]
 pub(crate) struct GenerateOpts {
     pub(crate) debug: bool,
+    pub(crate) vacation_from_address: Option<String>,
 }
 
-pub struct CodeGen<'a> {
+pub(crate) struct CodeGen<'a> {
     instructions: &'a [Instruction],
     cursor: usize,
     buffer: buffer::Buffer,
@@ -66,7 +71,7 @@ impl<'a> CodeGen<'a> {
         self.buffer.newline();
 
         self.buffer
-            .write("export async function run({ message, sendMessage }) {");
+            .write("export async function run({ message, env }) {");
         self.buffer.newline();
 
         self.buffer.write("const extraHeaders = new Headers;");
@@ -119,7 +124,7 @@ pub(crate) fn generate_instr(ctx: &mut CodeGen, instr: &Instruction) -> Result<(
             ctx.buffer.newline();
             ctx.buffer.write("try {");
 
-            generate_test(ctx, &n)?;
+            test::generate_test(ctx, &n)?;
 
             ctx.buffer.newline();
             ctx.buffer.write("} catch (err) {");
@@ -155,182 +160,12 @@ pub(crate) fn generate_instr(ctx: &mut CodeGen, instr: &Instruction) -> Result<(
         Instruction::Vacation(n) => vacation::generate_vacation(ctx, &n)?,
         Instruction::Set(n) => generate_set(ctx, &n)?,
         Instruction::Clear(n) => generate_clear(ctx, &n)?,
+        Instruction::FileInto(n) => fileinto::generate_fileinto(ctx, &n)?,
 
         e => todo!("{:?}", e),
     }
 
     Ok(())
-}
-
-fn generate_test(ctx: &mut CodeGen, node: &sieve_grammar::test::Test) -> Result<(), BoxError> {
-    let jz = match ctx.eat() {
-        Instruction::Jz(jz) => *jz,
-        e => unreachable!("invalid Jump instruction: {e:?}"),
-    };
-
-    match node {
-        sieve_grammar::test::Test::Address(addr) => {
-            ctx.buffer.write("if (");
-
-            assert_eq!(addr.header_list.len(), 1);
-            assert_eq!(addr.key_list.len(), 1);
-            assert_eq!(addr.match_type, sieve_grammar::MatchType::Is);
-
-            let header = addr.header_list.first().ok_or("expect one element")?;
-
-            match header {
-                sieve::compiler::Value::Text(s) => {
-                    let s = s.to_lowercase();
-                    assert_eq!(s, "to");
-
-                    ctx.buffer.write("parsedMessage.to[0].address");
-                }
-
-                e => unimplemented!("address test for header {e:?}"),
-            }
-
-            ctx.buffer.write("===");
-
-            for item in &addr.key_list {
-                generate_value(ctx, &item)?;
-            }
-
-            ctx.buffer.write(") {");
-            ctx.buffer.newline();
-
-            // consequent
-            while ctx.cursor < jz {
-                let instr = ctx.eat();
-                generate_instr(ctx, instr)?;
-            }
-            ctx.buffer.newline();
-
-            ctx.buffer.write("}");
-            ctx.buffer.newline();
-        }
-
-        sieve_grammar::test::Test::Header(node) => {
-            ctx.buffer.write("if (");
-
-            assert_eq!(node.header_list.len(), 1);
-            assert_eq!(node.key_list.len(), 1);
-
-            let header = node.header_list.first().ok_or("expect one element")?;
-
-            match header {
-                sieve::compiler::Value::Text(v) => match &*v.to_lowercase() {
-                    "subject" => {
-                        ctx.buffer.write("parsedMessage.subject");
-                    }
-
-                    _ => {
-                        ctx.buffer.write("parsedMessage.headers[");
-                        generate_value(ctx, &header)?;
-                        ctx.buffer.write("].value");
-                    }
-                },
-
-                _ => {
-                    ctx.buffer.write("parsedMessage.headers[");
-                    generate_value(ctx, &header)?;
-                    ctx.buffer.write("].value");
-                }
-            }
-
-            match node.match_type {
-                sieve_grammar::MatchType::Is => {
-                    ctx.buffer.write("===");
-
-                    for item in &node.key_list {
-                        generate_value(ctx, &item)?;
-                    }
-                }
-
-                sieve_grammar::MatchType::Contains => {
-                    ctx.buffer.write(".includes(");
-
-                    for item in &node.key_list {
-                        generate_value(ctx, &item)?;
-                    }
-
-                    ctx.buffer.write(")");
-                }
-
-                sieve_grammar::MatchType::Matches(_) => {
-                    ctx.buffer.write(".match(");
-
-                    let key = node.key_list.first().ok_or("expect one element")?;
-                    if let sieve::compiler::Value::Text(s) = key {
-                        ctx.buffer.write("/");
-                        ctx.buffer.write(&sieve_to_js_regex(&s));
-                        ctx.buffer.write("/");
-                    };
-
-                    ctx.buffer.write(")");
-                }
-
-                e => todo!("match type: {e:?}"),
-            }
-
-            ctx.buffer.write(") {");
-            ctx.buffer.newline();
-
-            while ctx.cursor < jz {
-                let instr = ctx.eat();
-                generate_instr(ctx, instr)?;
-            }
-            ctx.buffer.newline();
-
-            ctx.buffer.write("}");
-            ctx.buffer.newline();
-        }
-
-        sieve_grammar::test::Test::Vacation(_node) => {
-            // FIXME: for now there's no test for Vacation, we just execute the
-            // rule.
-
-            while ctx.cursor < jz {
-                let instr = ctx.eat();
-                generate_instr(ctx, instr)?;
-            }
-        }
-
-        sieve_grammar::test::Test::String(node) => {
-            assert_eq!(node.match_type, sieve_grammar::MatchType::Is);
-            assert_eq!(node.comparator, sieve_grammar::Comparator::AsciiCaseMap);
-
-            ctx.buffer.write("if (");
-
-            let source = node.source.first().ok_or("expect one element")?;
-            generate_value(ctx, source)?;
-
-            ctx.buffer.write("===");
-
-            let key = node.key_list.first().ok_or("expect one element")?;
-            generate_value(ctx, key)?;
-
-            ctx.buffer.write(") {");
-
-            while ctx.cursor < jz {
-                let instr = ctx.eat();
-                generate_instr(ctx, instr)?;
-            }
-
-            ctx.buffer.write("}");
-        }
-
-        sieve_grammar::test::Test::Body(n) => {
-            body::generate_test_body(ctx, n, jz)?;
-        }
-
-        e => todo!("test not implemented {:?}", e),
-    }
-
-    Ok(())
-}
-
-fn sieve_to_js_regex(v: &str) -> String {
-    v.replace("*", ".*")
 }
 
 fn generate_redirect(
@@ -355,6 +190,10 @@ fn generate_require(
         match capability {
             sieve_grammar::Capability::Variables => {
                 ctx.buffer.write("const variables = {};");
+            }
+
+            sieve_grammar::Capability::SpamTestPlus => {
+                spamtest::generate_require_spamtest(ctx)?;
             }
             _ => {}
         }
@@ -475,156 +314,6 @@ mod tests {
         assert_eq!(
             ctx.buffer.to_string(),
             "await message.forward(\"foo reason\",extraHeaders);"
-        );
-    }
-
-    #[test]
-    fn test_generate_test_address() {
-        let test =
-            sieve_grammar::test::Test::Address(sieve_grammar::tests::test_address::TestAddress {
-                header_list: vec![sieve::compiler::Value::Text(Arc::new("To".to_owned()))],
-                key_list: vec![sieve::compiler::Value::Text(Arc::new("match".to_owned()))],
-                address_part: sieve_grammar::AddressPart::All,
-                match_type: sieve_grammar::MatchType::Is,
-                comparator: sieve_grammar::Comparator::AsciiCaseMap,
-                index: None,
-                mime_anychild: false,
-                is_not: false,
-            });
-        let nodes = vec![
-            Instruction::Jz(3),
-            // consequent
-            Instruction::Stop,
-            Instruction::Stop,
-            // continuation
-            Instruction::Discard,
-        ];
-        let mut ctx = CodeGen::new(GenerateOpts::default(), &nodes);
-
-        generate_test(&mut ctx, &test).unwrap();
-        assert_eq!(
-            ctx.buffer.to_string(),
-            "if (parsedMessage.to[0].address===\"match\") {\nreturn;return;\n}\n"
-        );
-    }
-
-    #[test]
-    fn test_generate_test_header_contains() {
-        let test =
-            sieve_grammar::test::Test::Header(sieve_grammar::tests::test_header::TestHeader {
-                header_list: vec![sieve::compiler::Value::Text(Arc::new(
-                    "x-header".to_owned(),
-                ))],
-                key_list: vec![sieve::compiler::Value::Text(Arc::new("match".to_owned()))],
-                match_type: sieve_grammar::MatchType::Contains,
-                comparator: sieve_grammar::Comparator::AsciiCaseMap,
-                mime_opts: sieve_grammar::actions::action_mime::MimeOpts::None,
-                index: None,
-                mime_anychild: false,
-                is_not: false,
-            });
-        let nodes = vec![
-            Instruction::Jz(3),
-            // consequent
-            Instruction::Stop,
-            Instruction::Stop,
-            // continuation
-            Instruction::Discard,
-        ];
-        let mut ctx = CodeGen::new(GenerateOpts::default(), &nodes);
-
-        generate_test(&mut ctx, &test).unwrap();
-        assert_eq!(
-            ctx.buffer.to_string(),
-            "if (parsedMessage.headers[\"x-header\"].value.includes(\"match\")) {\nreturn;return;\n}\n"
-        );
-    }
-
-    #[test]
-    fn test_generate_test_header_match() {
-        let test =
-            sieve_grammar::test::Test::Header(sieve_grammar::tests::test_header::TestHeader {
-                header_list: vec![sieve::compiler::Value::Text(Arc::new("subject".to_owned()))],
-                key_list: vec![sieve::compiler::Value::Text(Arc::new("*".to_owned()))],
-                match_type: sieve_grammar::MatchType::Matches(2),
-                comparator: sieve_grammar::Comparator::AsciiCaseMap,
-                mime_opts: sieve_grammar::actions::action_mime::MimeOpts::None,
-                index: None,
-                mime_anychild: false,
-                is_not: false,
-            });
-        let nodes = vec![
-            Instruction::Jz(3),
-            // consequent
-            Instruction::Stop,
-            Instruction::Stop,
-            // continuation
-            Instruction::Discard,
-        ];
-        let mut ctx = CodeGen::new(GenerateOpts::default(), &nodes);
-
-        generate_test(&mut ctx, &test).unwrap();
-        assert_eq!(
-            ctx.buffer.to_string(),
-            "if (parsedMessage.subject.match(/.*/)) {\nreturn;return;\n}\n"
-        );
-    }
-
-    #[test]
-    fn test_generate_test_header_contains_well_known_header() {
-        let test =
-            sieve_grammar::test::Test::Header(sieve_grammar::tests::test_header::TestHeader {
-                header_list: vec![sieve::compiler::Value::Text(Arc::new("SuBJecT".to_owned()))],
-                key_list: vec![sieve::compiler::Value::Text(Arc::new("match".to_owned()))],
-                match_type: sieve_grammar::MatchType::Contains,
-                comparator: sieve_grammar::Comparator::AsciiCaseMap,
-                mime_opts: sieve_grammar::actions::action_mime::MimeOpts::None,
-                index: None,
-                mime_anychild: false,
-                is_not: false,
-            });
-        let nodes = vec![
-            Instruction::Jz(3),
-            // consequent
-            Instruction::Stop,
-            Instruction::Stop,
-            // continuation
-            Instruction::Discard,
-        ];
-        let mut ctx = CodeGen::new(GenerateOpts::default(), &nodes);
-
-        generate_test(&mut ctx, &test).unwrap();
-        assert_eq!(
-            ctx.buffer.to_string(),
-            "if (parsedMessage.subject.includes(\"match\")) {\nreturn;return;\n}\n"
-        );
-    }
-
-    #[test]
-    fn test_generate_test_string() {
-        let test =
-            sieve_grammar::test::Test::String(sieve_grammar::tests::test_string::TestString {
-                match_type: sieve_grammar::MatchType::Is,
-                comparator: sieve_grammar::Comparator::AsciiCaseMap,
-                source: vec![sieve::compiler::Value::Text(Arc::new("test".to_owned()))],
-                key_list: vec![sieve::compiler::Value::Text(Arc::new("Y".to_owned()))],
-                is_not: false,
-            });
-
-        let nodes = vec![
-            Instruction::Jz(3),
-            // consequent
-            Instruction::Stop,
-            Instruction::Stop,
-            // continuation
-            Instruction::Discard,
-        ];
-        let mut ctx = CodeGen::new(GenerateOpts::default(), &nodes);
-
-        generate_test(&mut ctx, &test).unwrap();
-        assert_eq!(
-            ctx.buffer.to_string(),
-            "if (\"test\"===\"Y\") {return;return;}"
         );
     }
 }
