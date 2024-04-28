@@ -15,21 +15,30 @@ pub(crate) fn generate_test(
 
     match node {
         sieve_grammar::test::Test::Address(addr) => {
-            assert_eq!(addr.header_list.len(), 1);
-            assert_eq!(addr.key_list.len(), 1);
-            assert_eq!(addr.match_type, sieve_grammar::MatchType::Is);
+            if addr.header_list.len() != 1 {
+                return Err(
+                    format!("unsupported header_list len: {}", addr.header_list.len()).into(),
+                );
+            }
+            if addr.key_list.len() != 1 {
+                return Err(format!("unsupported key_list len: {}", addr.key_list.len()).into());
+            }
+            if addr.match_type != sieve_grammar::MatchType::Is {
+                return Err(format!("unsupported match_type: {:?}", addr.match_type).into());
+            }
 
             let header = addr.header_list.first().ok_or("expect one element")?;
 
             match header {
                 sieve::compiler::Value::Text(s) => {
-                    let s = s.to_lowercase();
-                    assert_eq!(s, "to");
+                    if s.to_lowercase() != "to" {
+                        return Err(format!("unsupported header: {s}").into());
+                    }
 
                     ctx.buffer.write("parsedMessage.to[0].address");
                 }
 
-                e => unimplemented!("address test for header {e:?}"),
+                e => return Err(format!("address test for header not implemented: {e:?}").into()),
             }
 
             ctx.buffer.write("===");
@@ -40,8 +49,14 @@ pub(crate) fn generate_test(
         }
 
         sieve_grammar::test::Test::Header(node) => {
-            assert_eq!(node.header_list.len(), 1);
-            assert_eq!(node.key_list.len(), 1);
+            if node.header_list.len() != 1 {
+                return Err(
+                    format!("unsupported header_list len: {}", node.header_list.len()).into(),
+                );
+            }
+            if node.key_list.len() != 1 {
+                return Err(format!("unsupported key_list len: {}", node.key_list.len()).into());
+            }
 
             let header = node.header_list.first().ok_or("expect one element")?;
 
@@ -108,8 +123,12 @@ pub(crate) fn generate_test(
         }
 
         sieve_grammar::test::Test::String(node) => {
-            assert_eq!(node.match_type, sieve_grammar::MatchType::Is);
-            assert_eq!(node.comparator, sieve_grammar::Comparator::AsciiCaseMap);
+            if node.match_type != sieve_grammar::MatchType::Is {
+                return Err(format!("unsupported match_type: {:?}", node.match_type).into());
+            }
+            if node.comparator != sieve_grammar::Comparator::AsciiCaseMap {
+                return Err(format!("unsupported comparator: {:?}", node.comparator).into());
+            }
 
             let source = node.source.first().ok_or("expect one element")?;
             generate_value(ctx, source)?;

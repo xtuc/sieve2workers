@@ -150,7 +150,7 @@ class App extends React.Component {
           {this.state.error ? (
             <div className="error">
               <h1>Failed to compile</h1>
-              <p>{this.state.error.message}</p>
+              <p>{this.state.error}</p>
             </div>
           ) : (
             <Editor

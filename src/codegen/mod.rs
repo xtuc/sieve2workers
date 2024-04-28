@@ -203,8 +203,12 @@ fn generate_require(
 }
 
 fn generate_clear(ctx: &mut CodeGen, node: &sieve_grammar::Clear) -> Result<(), BoxError> {
-    assert_eq!(node.local_vars_idx, 0);
-    assert_eq!(node.match_vars, 0);
+    if node.local_vars_idx != 0 {
+        return Err(format!("unsupported local_vars_idx: {}", node.local_vars_idx).into());
+    }
+    if node.match_vars != 0 {
+        return Err(format!("unsupported match_vars: {}", node.match_vars).into());
+    }
 
     ctx.buffer.write("delete variables[");
     ctx.buffer
@@ -218,7 +222,9 @@ fn generate_set(
     ctx: &mut CodeGen,
     node: &sieve_grammar::actions::action_set::Set,
 ) -> Result<(), BoxError> {
-    assert_eq!(node.modifiers.len(), 0);
+    if node.modifiers.len() != 0 {
+        return Err(format!("unsupported modifiers len: {}", node.modifiers.len()).into());
+    }
 
     ctx.buffer.write("variables[");
 
@@ -226,7 +232,7 @@ fn generate_set(
         sieve::compiler::VariableType::Local(idx) => {
             ctx.buffer.write_quoted(&format!("local{idx}"));
         }
-        e => unimplemented!("Variable type: {e:?}"),
+        e => return Err(format!("variable type not implemented: {e:?}").into()),
     }
 
     ctx.buffer.write("] = ");

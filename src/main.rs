@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::fs;
 use std::io::prelude::*;
+use std::process;
 
 mod codegen;
 
@@ -22,16 +23,26 @@ struct Args {
     debug: bool,
 
     /// Email used when sending a Vacation reply
+    #[arg(long)]
     vacation_from_address: Option<String>,
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() {
+    if let Err(err) = inner_main() {
+        eprintln!("failed to compile: {err}");
+        process::exit(1);
+    }
+}
+
+fn inner_main() -> Result<(), BoxError> {
     let args = Args::parse();
 
     let contents = fs::read(&args.input)?;
 
     let compiler = sieve::Compiler::new();
-    let script = compiler.compile(&contents).unwrap();
+    let script = compiler
+        .compile(&contents)
+        .map_err(|err| format!("failed to parse Sieve script: {err}"))?;
 
     if args.debug {
         println!("script {:#?}", script);

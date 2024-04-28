@@ -18,7 +18,7 @@ pub(crate) fn generate_add_header(
             ctx.buffer.write(");");
         }
 
-        e => unimplemented!("add header field: {e:?}"),
+        e => return Err(format!("add header field not implemented: {e:?}").into()),
     }
 
     Ok(())
