@@ -13,7 +13,7 @@ pub fn compile_sieve_to_js(contents: &str) -> Result<String, BoxError> {
             debug: false,
             vacation_from_address: None,
         };
-        let mut code_gen = codegen::CodeGen::new(opts, &script.instructions);
+        let mut code_gen = codegen::js::CodeGen::new(opts, &script.instructions);
         code_gen
             .generate_js()
             .map_err(|err| format!("failed to generate JavaScript: {err}"))?

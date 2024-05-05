@@ -1,4 +1,4 @@
-use crate::codegen::{body, generate_instr, generate_value, spamtest, BoxError, CodeGen};
+use crate::codegen::js::{body, generate_instr, generate_value, spamtest, BoxError, CodeGen};
 use sieve::compiler::grammar as sieve_grammar;
 use sieve::compiler::grammar::instruction::Instruction;
 

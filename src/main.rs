@@ -53,7 +53,7 @@ fn inner_main() -> Result<(), BoxError> {
             debug: args.debug,
             vacation_from_address: args.vacation_from_address,
         };
-        let mut code_gen = codegen::CodeGen::new(opts, &script.instructions);
+        let mut code_gen = codegen::js::CodeGen::new(opts, &script.instructions);
         code_gen.generate_js().unwrap()
     };
 

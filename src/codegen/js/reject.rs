@@ -1,4 +1,4 @@
-use crate::codegen::{generate_value, BoxError, CodeGen};
+use crate::codegen::js::{generate_value, BoxError, CodeGen};
 use sieve::compiler::grammar as sieve_grammar;
 
 pub(crate) fn generate_reject(

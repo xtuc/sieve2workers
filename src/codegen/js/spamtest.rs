@@ -1,4 +1,4 @@
-use crate::codegen::{generate_instr, generate_value, BoxError, CodeGen};
+use crate::codegen::js::{generate_instr, generate_value, BoxError, CodeGen};
 use sieve::compiler::grammar as sieve_grammar;
 
 pub(crate) fn generate_require_spamtest(ctx: &mut CodeGen) -> Result<(), BoxError> {

@@ -1,4 +1,4 @@
-use crate::codegen::{generate_value, BoxError, CodeGen};
+use crate::codegen::js::{BoxError, CodeGen};
 use sieve::compiler::grammar as sieve_grammar;
 
 pub(crate) fn generate_fileinto(
@@ -14,10 +14,15 @@ pub(crate) fn generate_fileinto(
     assert!(dest.starts_with("r2://"));
 
     let bucket = dest.replace("r2://", "");
-    let key = "foobar";
 
     ctx.buffer
-        .write(&format!("await env.{bucket}.put(\"{key}\", raw)"));
+        .write("const key = (parsedMessage.messageId || crypto.randomUUID()) + '.eml';");
+    ctx.buffer
+        .write(&format!("await env.{bucket}.put(key, raw);"));
+
+    if ctx.opts.debug {
+        ctx.buffer.write("console.log('stored email at ', key);");
+    }
 
     Ok(())
 }

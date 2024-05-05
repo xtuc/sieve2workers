@@ -1,4 +1,4 @@
-use crate::codegen::{BoxError, CodeGen};
+use crate::codegen::js::{BoxError, CodeGen};
 use sieve::compiler::grammar as sieve_grammar;
 
 pub(crate) fn generate_vacation(
@@ -22,6 +22,11 @@ pub(crate) fn generate_vacation(
         .vacation_from_address
         .as_ref()
         .ok_or("Missing --vacation-from-address")?;
+
+    ctx.buffer
+        .write_prepend("import {createMimeMessage} from 'mimetext';");
+    ctx.buffer
+        .write_prepend("import { EmailMessage } from 'cloudflare:email';");
 
     ctx.buffer.write(&format!(
         r#"

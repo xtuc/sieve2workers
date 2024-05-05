@@ -9,6 +9,10 @@ impl Buffer {
         Buffer { inner: vec![] }
     }
 
+    pub(crate) fn write_prepend(&mut self, v: &str) {
+        self.inner = vec![vec![v.to_owned()], self.inner.clone()].concat();
+    }
+
     pub(crate) fn write(&mut self, v: &str) {
         self.inner.push(v.to_owned());
     }
